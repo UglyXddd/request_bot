@@ -1,17 +1,18 @@
 {
     "650065041": {
         "department": "\u041e\u0442\u0434\u0435\u043b \u0440\u0430\u0437\u0440\u0430\u0431\u043e\u0442\u043a\u0438",
-        "full_name": "\u0421\u0430\u0444\u0440\u043e\u043d\u043e\u0432\u043e \u0413 \u0421",
-        "position": "\u0438\u043d\u044b\u0436",
-        "inventory_number": "0808",
-        "problem_description": "056"
-    },
-    "650065041": {
-        "department": "\u041e\u0442\u0434\u0435\u043b \u0440\u0430\u0437\u0440\u0430\u0431\u043e\u0442\u043a\u0438",
         "full_name": "\u0444\u044b\u0432\u0444\u044b\u0432 \u0444\u044b\u0432 \u0444",
         "position": "\u0444\u044b\u0432",
         "inventory_number": "76",
         "serial_number": "\u0444\u044b\u0432 \u0444\u044b\u0432\u044b\u0444\u0432\u0444\u044b\u0432 \u044b\u0444\u0432\u0432\u044b\u0444\u044b\u0432\u0444\u0444\u044b\u0432",
         "problem_description": "\u044b\u0444\u0432 \u0444\u0432\u044b\u044b\u0444\u0432 \u0432\u0444\u044b \u044b\u0432\u0444"
+    },
+    "650065041": {
+        "department": "\u041e\u0442\u0434\u0435\u043b \u0440\u0430\u0437\u0440\u0430\u0431\u043e\u0442\u043a\u0438",
+        "full_name": "\u0421\u0430\u0444 \u0413\u0440\u0438 \u0421\u0435\u0440",
+        "position": "\u0418\u043d\u0436",
+        "inventory_number": "0808",
+        "serial_number": "0505",
+        "problem_description": "\u041a\u0430\u043f\u0443\u0447\u0438\u043d\u0430\u0442\u043e\u0440 \u043d\u0435 \u043a\u0430\u043f\u0435\u0447\u0438\u043d\u0438\u0440\u0443\u0435\u0442"
     }
 }

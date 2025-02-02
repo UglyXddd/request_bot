@@ -2,8 +2,48 @@ import logging
 import json
 import telebot
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
 
+# Настройки API Google Sheets
+GOOGLE_SHEETS_FILE = "google_sheets_key.json"  # Укажи путь к JSON-файлу ключа
+SPREADSHEET_ID = "1PaU7M90V_qcSJlfnRn_4FVVfg8hJ87RVk9jJLQ15rAY"  # Новый ID таблицы
+SHEET_NAME = "Лист1"  # Название листа (поменяй, если другое)
+
+
+# Функция подключения к Google Sheets
+def connect_to_sheets():
+    try:
+        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+        creds = ServiceAccountCredentials.from_json_keyfile_name(GOOGLE_SHEETS_FILE, scope)
+        client = gspread.authorize(creds)
+        return client.open_by_key(SPREADSHEET_ID).worksheet(SHEET_NAME)
+    except Exception as e:
+        print(f"Ошибка подключения к Google Sheets: {e}")
+        return None
+
+
+# Функция сохранения заявки в Google Таблицу
+def save_to_google_sheets(data):
+    try:
+        sheet = connect_to_sheets()
+        if not sheet:
+            return False
+
+        sheet.append_row([
+            data['full_name'],
+            data['position'],
+            data['inventory_number'],
+            data['serial_number'],
+            data['problem_description']
+        ])
+        return True
+    except Exception as e:
+        print(f"Ошибка записи в Google Sheets: {e}")
+        return False
+
+    
 # Читаем токен из файла
 def read_token():
     with open("token.txt", "r") as file:
@@ -142,12 +182,14 @@ def edit_data_options(message):
 
 def edit_selected_field(message):
     fields = {
-        "Изменить ФИО": request_full_name,
-        "Изменить должность": request_position,
-        "Изменить инвентарный номер": request_inventory_number,
-        "Изменить серийный номер": request_serial_number,
-        "Изменить описание проблемы": request_problem_description
+        "Изменить ФИО": lambda msg: update_field(msg, "full_name", "Введите ваше ФИО:"),
+        "Изменить должность": lambda msg: update_field(msg, "position", "Введите вашу должность:"),
+        "Изменить инвентарный номер": lambda msg: update_field(msg, "inventory_number",
+                                                               "Введите ваш инвентарный номер:"),
+        "Изменить серийный номер": lambda msg: update_field(msg, "serial_number", "Введите ваш серийный номер:"),
+        "Изменить описание проблемы": lambda msg: update_field(msg, "problem_description", "Опишите вашу проблему:")
     }
+
     if message.text in fields:
         fields[message.text](message)
     elif message.text == "Назад":
@@ -179,35 +221,30 @@ def start_new_request(message):
 
     # Проверяем, есть ли данные пользователя в памяти
     if user_id in user_data and 'full_name' in user_data[user_id]:
-        data = user_data[user_id]
-        summary = (f"Ваши данные:\nФИО: {data['full_name']}\n"
-                   f"Должность: {data['position']}\n"
-                   f"Инвентарный номер: {data['inventory_number']}\n"
-                   f"Серийный номер: {data['serial_number']}\n"
-                   "Введите описание проблемы:")
-        bot.send_message(user_id, summary)
-        # Регистрация только одного шага для описания проблемы
-        bot.register_next_step_handler(message, request_problem_description)
+        bot.send_message(user_id, "Введите описание проблемы:")
+        bot.register_next_step_handler(message, confirm_data)  # <-- исправлено
     else:
         bot.send_message(user_id, "Для создания новой заявки нужно ввести данные заново.")
         request_full_name(message)
-
 
 
 def create_new_request(message):
     user_id = message.chat.id
+
     if user_id in user_data and 'full_name' in user_data[user_id]:
-        data = user_data[user_id]
-        summary = (f"Ваши данные:\nФИО: {data['full_name']}\n"
-                   f"Должность: {data['position']}\n"
-                   f"Инвентарный номер: {data['inventory_number']}\n"
-                   f"Серийный номер: {data['serial_number']}\n"
-                   "Введите описание проблемы:")
-        bot.send_message(user_id, summary)
-        bot.register_next_step_handler(message, request_problem_description)
+        bot.send_message(user_id, "Введите описание проблемы:")
+        bot.register_next_step_handler(message, confirm_data)  # <-- исправлено
     else:
         bot.send_message(user_id, "Для создания новой заявки нужно ввести данные заново.")
         request_full_name(message)
+
+
+def update_field(message, field, prompt):
+    user_data[message.chat.id][field] = message.text.strip()
+    save_user_data()  # Сохраняем изменения сразу
+    bot.send_message(message.chat.id, "Данные обновлены.")
+    confirm_data(message)  # Возвращаем пользователя к подтверждению данных
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
