@@ -9,13 +9,12 @@ import chardet  # Библиотека для определения кодир�
 
 # Настройки
 MAIL_SERVER = "imap.mail.ru"
-MAIL_USER = "axer1998@mail.ru"
-MAIL_PASS = "fdpZ7FHjnQnt4bDd8uwH"
+MAIL_USER = "ant.mosco_w@mail.ru"
+MAIL_PASS = "aWaVR6q6mpUgP3tuDUY8"
 TELEGRAM_TOKEN = "7793677369:AAEw15axx4UMdqnIAYmPX6EvkwIuzTVfl1s"
 CHAT_ID = "-1002480536548"
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
-
 
 
 def get_latest_email():
