@@ -1,6 +1,5 @@
 #7793677369:AAEw15axx4UMdqnIAYmPX6EvkwIuzTVfl1s
-#-1002480536548
-#fdpZ7FHjnQnt4bDd8uwH
+#838543272
 import imaplib
 import email
 import telebot
@@ -10,12 +9,10 @@ from email.header import decode_header
 
 # Настройки
 MAIL_SERVER = "imap.mail.ru"
-MAIL_USER = "axer1998@mail.ru"
-#MAIL_USER = "ant.mosco_w@mail.ru"
-MAIL_PASS = "fdpZ7FHjnQnt4bDd8uwH"
-#MAIL_PASS = "aWaVR6q6mpUgP3tuDUY8"
+MAIL_USER = "ant.mosco_w@mail.ru"
+MAIL_PASS = "aWaVR6q6mpUgP3tuDUY8"
 TELEGRAM_TOKEN = "7793677369:AAEw15axx4UMdqnIAYmPX6EvkwIuzTVfl1s"
-CHAT_ID = "-1002480536548"
+CHAT_ID = "838543272"
 
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
@@ -130,6 +127,6 @@ while True:
     else:
         print("📭 Новых заявок нет.")
 
-    time.sleep(10)
-    print("😴 Поспал 10 секунд...")
+    time.sleep(59)
+    print("😴 Поспал 1 минуту...\n===================================================================")
 

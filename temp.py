@@ -1,18 +1,13 @@
-import imaplib
+import telebot
 
-MAIL_SERVER = "imap.mail.ru"  # IMAP-сервер Mail.ru
-MAIL_USER = "axer1998@mail.ru"  # Введи свою почту
-MAIL_PASS = "fdpZ7FHjnQnt4bDd8uwH"  # Введи свой обычный пароль
+TOKEN = "7793677369:AAEw15axx4UMdqnIAYmPX6EvkwIuzTVfl1s"  # Вставь свой токен бота
 
-try:
-    # Подключаемся к IMAP-серверу
-    mail = imaplib.IMAP4_SSL(MAIL_SERVER, 993)
-    mail.login(MAIL_USER, MAIL_PASS)
+bot = telebot.TeleBot(TOKEN)
 
-    print("✅ Подключение успешно!")
 
-    # Завершаем сессию
-    mail.logout()
+@bot.message_handler(func=lambda message: True)
+def get_chat_id(message):
+    print(f"Chat ID группы: {message.chat.id}")
+    bot.send_message(message.chat.id, f"Ваш chat_id: {message.chat.id}")
 
-except Exception as e:
-    print(f"❌ Ошибка: {e}")
+bot.polling()
