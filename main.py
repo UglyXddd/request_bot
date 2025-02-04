@@ -7,8 +7,8 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 
 # Настройки API Google Sheets
-GOOGLE_SHEETS_FILE = "google_sheets_key.json"  # Укажи путь к JSON-файлу ключа
-SPREADSHEET_ID = "1PaU7M90V_qcSJlfnRn_4FVVfg8hJ87RVk9jJLQ15rAY"  # Новый ID таблицы
+GOOGLE_SHEETS_FILE = "requestbot-449717-5cf6a48a0ed7.json"  # Укажи путь к JSON-файлу ключа
+SPREADSHEET_ID = "1J__mJm9JNu5KWugecueHUNqE7XY3lnHDuSNI8DcvGc4"  # Новый ID таблицы
 SHEET_NAME = "Лист1"  # Название листа (поменяй, если другое)
 
 
@@ -204,12 +204,24 @@ def send_final_options(message):
 
 
 def handle_application_choice(message):
-    if message.text == "Подать заявку в Юнисервис":
-        save_request(user_data[message.chat.id], UNISERVER_FILE)
-    elif message.text == "Подать заявку в ИАЦ":
-        save_request(user_data[message.chat.id], IAC_FILE)
+    user_id = message.chat.id
+    if user_id not in user_data:
+        bot.send_message(message.chat.id, "Ошибка: нет данных для заявки. Попробуйте снова.")
+        return
 
-    # Добавляем кнопку для создания новой заявки
+    if message.text == "Подать заявку в Юнисервис":
+        save_request(user_data[user_id], UNISERVER_FILE)  # Сохраняем в JSON
+        success = save_to_google_sheets(user_data[user_id])  # Записываем в Google Sheets
+
+        if success:
+            bot.send_message(message.chat.id, "✅ Заявка успешно отправлена в Юнисервис и сохранена в Google Таблице!")
+        else:
+            bot.send_message(message.chat.id, "❌ Ошибка при записи в Google Таблицу, но заявка сохранена в Юнисервис.")
+
+    elif message.text == "Подать заявку в ИАЦ":
+        save_request(user_data[user_id], IAC_FILE)
+
+    # Добавляем кнопку для новой заявки
     markup = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     markup.add(KeyboardButton("Новая заявка"))
     bot.send_message(message.chat.id, "Заявка подана! Хотите создать новую?", reply_markup=markup)
