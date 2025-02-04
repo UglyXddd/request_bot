@@ -6,15 +6,35 @@ import email
 import telebot
 import time
 import chardet  # Библиотека для определения кодировки
+from email.header import decode_header
 
 # Настройки
 MAIL_SERVER = "imap.mail.ru"
-MAIL_USER = "ant.mosco_w@mail.ru"
-MAIL_PASS = "aWaVR6q6mpUgP3tuDUY8"
+MAIL_USER = "axer1998@mail.ru"
+#MAIL_USER = "ant.mosco_w@mail.ru"
+MAIL_PASS = "fdpZ7FHjnQnt4bDd8uwH"
+#MAIL_PASS = "aWaVR6q6mpUgP3tuDUY8"
 TELEGRAM_TOKEN = "7793677369:AAEw15axx4UMdqnIAYmPX6EvkwIuzTVfl1s"
 CHAT_ID = "-1002480536548"
 
+
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
+
+
+def decode_email_header(header):
+    """Функция для декодирования темы письма"""
+    decoded_header = decode_header(header)
+    subject = ""
+    for part, encoding in decoded_header:
+        if isinstance(part, bytes):  # Если закодировано в байтах
+            encoding = encoding if encoding else "utf-8"
+            try:
+                subject += part.decode(encoding, errors="ignore")
+            except:
+                subject += part.decode("utf-8", errors="ignore")
+        else:
+            subject += part
+    return subject.strip()
 
 
 def get_latest_email():
@@ -38,11 +58,19 @@ def get_latest_email():
             raw_email = msg_data[0][1]
             msg = email.message_from_bytes(raw_email)
 
+            # Декодируем тему письма
             subject = msg["subject"] if msg["subject"] else "(Без темы)"
+            subject = decode_email_header(subject)
+
             from_email = msg["from"]
             body = ""
 
-            # Определяем кодировку и декодируем текст
+            # 🔍 ФИЛЬТРУЕМ ТОЛЬКО ЗАЯВКИ (если тема не начинается с "[~", письмо игнорируется)
+            if not subject.startswith("[~"):
+                print(f"🚫 Письмо проигнорировано (не заявка). Тема: {subject}")
+                continue
+
+            # Определяем кодировку и декодируем текст письма
             if msg.is_multipart():
                 for part in msg.walk():
                     if part.get_content_type() == "text/plain":
@@ -65,10 +93,12 @@ def get_latest_email():
 
                 body = payload.decode(encoding, errors="ignore").strip()
 
-            # Вывод темы и текста письма в консоль
+            # Выводим информацию в консоль
+            print(f"✅ Письмо обработано!")
             print(f"📌 Тема: {subject}")
             print(f"📄 Текст письма:\n{body[:500]}")  # Ограничим вывод 500 символами
 
+            # Добавляем письмо в список сообщений для отправки в Telegram
             messages.append(f"📩 Новая заявка!\nОт: {from_email}\nТема: {subject}\n\n{body}")
 
         mail.logout()
@@ -95,10 +125,11 @@ while True:
     emails = get_latest_email()
 
     if emails:
-        print("📬 Найдены новые письма, отправляю в Telegram...")
+        print("📬 Найдены новые заявки, отправляю в Telegram...")
         send_to_telegram(emails)
     else:
-        print("📭 Новых писем нет.")
+        print("📭 Новых заявок нет.")
 
     time.sleep(10)
     print("😴 Поспал 10 секунд...")
+
