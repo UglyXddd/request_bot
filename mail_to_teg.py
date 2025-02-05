@@ -18,15 +18,19 @@ bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
 
 def decode_email_header(header):
-    """Функция для декодирования темы письма"""
+    """Функция для корректного декодирования темы письма"""
     decoded_header = decode_header(header)
     subject = ""
     for part, encoding in decoded_header:
-        if isinstance(part, bytes):
+        if isinstance(part, bytes):  # Если заголовок закодирован в байтах
             encoding = encoding if encoding else "utf-8"
-            subject += part.decode(encoding, errors="ignore")
+            try:
+                subject += part.decode(encoding, errors="ignore")
+            except:
+                subject += part.decode("utf-8", errors="ignore")
         else:
             subject += part
+    print(subject, "Название темы.\n")
     return subject.strip()
 
 
@@ -40,16 +44,12 @@ def clean_html_text(text):
 
     text = re.sub(r"<.*?>", "", text)  # Удаляем оставшиеся HTML-теги
 
+    # Удаляем "Детали Запроса" и всё, что идёт после него
+    ##text = re.sub(r"Детали Запроса.*", "", text, flags=re.DOTALL)
+
     # Добавляем переносы строк перед важными полями
     text = re.sub(r"(?<!\n)(Запись от: \d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2})", r"\n\1", text)
-    text = re.sub(r"(?<!\n)(ID запроса: \d+)", r"\n\1", text)
-    text = re.sub(r"(?<!\n)(Отдел: .+)", r"\n\1", text)
-    text = re.sub(r"(?<!\n)(Тип: .+)", r"\n\1", text)
-    text = re.sub(r"(?<!\n)(Статус: .+)", r"\n\1", text)
-    text = re.sub(r"(?<!\n)(Приоритет: .+)", r"\n\1", text)
 
-    # Теперь убираем только лишние пробелы, НЕ удаляя переносы строк!
-    text = re.sub(r"[ \t]+", " ", text).strip()
     # Удаляем лишние пустые строки, оставляя максимум 1 подряд
     text = re.sub(r"\n\s*\n+", "\n\n", text).strip()
 
@@ -96,7 +96,7 @@ def get_latest_email():
             subject = msg["subject"] if msg["subject"] else "(Без темы)"
             subject = decode_email_header(subject)
 
-            if not subject.startswith("[~"):
+            if not subject.strip().startswith("[~"):
                 print(f"🚫 Письмо проигнорировано (не заявка). Тема: {subject}")
                 continue
 
@@ -127,7 +127,10 @@ def get_latest_email():
             history, details = extract_relevant_info(body)
 
             if history and details:
-                clean_message = f"📩 Новая заявка!\nТема: {subject}\n\n{history}\n\n{details}"
+                details = ''
+                print("------------------------\n", subject, "\n-------------------\n", history, "\n-----------------")
+                history = history.replace("Детали Запроса", '')
+                clean_message = f"Тема: {subject}\n\n{history}\n\n{details}"
                 messages.append(clean_message)
                 print(f"✅ Письмо обработано и готово к отправке!")
 
