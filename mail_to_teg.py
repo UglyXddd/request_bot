@@ -1,19 +1,18 @@
-#7793677369:AAEw15axx4UMdqnIAYmPX6EvkwIuzTVfl1s
-#838543272
 import imaplib
 import email
 import telebot
 import time
-import chardet  # Библиотека для определения кодировки
+import chardet  # Определение кодировки
 from email.header import decode_header
+import re
+import html
 
 # Настройки
 MAIL_SERVER = "imap.mail.ru"
-MAIL_USER = "ant.mosco_w@mail.ru"
-MAIL_PASS = "aWaVR6q6mpUgP3tuDUY8"
+MAIL_USER = "axer1998@mail.ru"
+MAIL_PASS = "fdpZ7FHjnQnt4bDd8uwH"
 TELEGRAM_TOKEN = "7793677369:AAEw15axx4UMdqnIAYmPX6EvkwIuzTVfl1s"
-CHAT_ID = "838543272"
-
+CHAT_ID = "-1002480536548"
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
@@ -23,15 +22,47 @@ def decode_email_header(header):
     decoded_header = decode_header(header)
     subject = ""
     for part, encoding in decoded_header:
-        if isinstance(part, bytes):  # Если закодировано в байтах
+        if isinstance(part, bytes):
             encoding = encoding if encoding else "utf-8"
-            try:
-                subject += part.decode(encoding, errors="ignore")
-            except:
-                subject += part.decode("utf-8", errors="ignore")
+            subject += part.decode(encoding, errors="ignore")
         else:
             subject += part
     return subject.strip()
+
+
+def clean_html_text(text):
+    """Функция для удаления HTML-тегов, декодирования символов и форматирования"""
+
+    text = html.unescape(text)  # Декодируем HTML-сущности (&nbsp; -> пробел, &quot; -> ")
+
+    text = re.sub(r"<a\s+.*?>.*?</a>", "", text, flags=re.DOTALL)
+    text = re.sub(r"<hr\s+.*?>", "", text, flags=re.DOTALL)
+
+    text = re.sub(r"<.*?>", "", text)  # Удаляем HTML-теги
+    text = re.sub(r"(?<!\n)(Запись от: \d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2})", r"\n\1", text)
+    text = re.sub(r"(?<!\n)(ID запроса: \d+)", r"\n\1", text)
+    text = re.sub(r"(?<!\n)(Отдел: .+)", r"\n\1", text)
+    text = re.sub(r"(?<!\n)(Тип: .+)", r"\n\1", text)
+    text = re.sub(r"(?<!\n)(Статус: .+)", r"\n\1", text)
+    text = re.sub(r"(?<!\n)(Приоритет: .+)", r"\n\1", text)
+
+    text = re.sub(r"\s+", " ", text).strip()  # Убираем лишние пробелы
+    return text
+
+
+def extract_relevant_info(body):
+    """Фильтрует и оставляет только нужную информацию"""
+    body = clean_html_text(body)
+
+    # Извлекаем историю запроса
+    history_match = re.search(r"Запись от:.*?(?=ID запроса:)", body, re.DOTALL)
+    history = history_match.group(0).strip() if history_match else ""
+
+    # Извлекаем детали запроса
+    details_match = re.search(r"ID запроса:.*", body, re.DOTALL)
+    details = details_match.group(0).strip() if details_match else ""
+
+    return history, details
 
 
 def get_latest_email():
@@ -59,15 +90,11 @@ def get_latest_email():
             subject = msg["subject"] if msg["subject"] else "(Без темы)"
             subject = decode_email_header(subject)
 
-            from_email = msg["from"]
-            body = ""
-
-            # 🔍 ФИЛЬТРУЕМ ТОЛЬКО ЗАЯВКИ (если тема не начинается с "[~", письмо игнорируется)
             if not subject.startswith("[~"):
                 print(f"🚫 Письмо проигнорировано (не заявка). Тема: {subject}")
                 continue
 
-            # Определяем кодировку и декодируем текст письма
+            body = ""
             if msg.is_multipart():
                 for part in msg.walk():
                     if part.get_content_type() == "text/plain":
@@ -90,13 +117,13 @@ def get_latest_email():
 
                 body = payload.decode(encoding, errors="ignore").strip()
 
-            # Выводим информацию в консоль
-            print(f"✅ Письмо обработано!")
-            print(f"📌 Тема: {subject}")
-            print(f"📄 Текст письма:\n{body[:500]}")  # Ограничим вывод 500 символами
+            # Фильтруем только нужную информацию
+            history, details = extract_relevant_info(body)
 
-            # Добавляем письмо в список сообщений для отправки в Telegram
-            messages.append(f"📩 Новая заявка!\nОт: {from_email}\nТема: {subject}\n\n{body}")
+            if history and details:
+                clean_message = f"📩 Новая заявка!\nТема: {subject}\n\n{history}\n\n{details}"
+                messages.append(clean_message)
+                print(f"✅ Письмо обработано и готово к отправке!")
 
         mail.logout()
         return messages
@@ -116,7 +143,7 @@ def send_to_telegram(messages):
             print(f"❌ Ошибка при отправке в Telegram: {e}")
 
 
-# Основной цикл с логами
+# Основной цикл
 while True:
     print("🔍 Проверяю почту...")
     emails = get_latest_email()
@@ -127,6 +154,7 @@ while True:
     else:
         print("📭 Новых заявок нет.")
 
-    time.sleep(59)
-    print("😴 Поспал 1 минуту...\n===================================================================")
+    time.sleep(5)
+    print("😴 Поспал 10 минут...\n===================================================================")
+
 
