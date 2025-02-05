@@ -35,10 +35,12 @@ def clean_html_text(text):
 
     text = html.unescape(text)  # Декодируем HTML-сущности (&nbsp; -> пробел, &quot; -> ")
 
-    text = re.sub(r"<a\s+.*?>.*?</a>", "", text, flags=re.DOTALL)
-    text = re.sub(r"<hr\s+.*?>", "", text, flags=re.DOTALL)
+    text = re.sub(r"<a\s+.*?>.*?</a>", "", text, flags=re.DOTALL)  # Убираем <a>
+    text = re.sub(r"<hr\s+.*?>", "", text, flags=re.DOTALL)  # Убираем <hr>
 
-    text = re.sub(r"<.*?>", "", text)  # Удаляем HTML-теги
+    text = re.sub(r"<.*?>", "", text)  # Удаляем оставшиеся HTML-теги
+
+    # Добавляем переносы строк перед важными полями
     text = re.sub(r"(?<!\n)(Запись от: \d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2})", r"\n\1", text)
     text = re.sub(r"(?<!\n)(ID запроса: \d+)", r"\n\1", text)
     text = re.sub(r"(?<!\n)(Отдел: .+)", r"\n\1", text)
@@ -46,7 +48,11 @@ def clean_html_text(text):
     text = re.sub(r"(?<!\n)(Статус: .+)", r"\n\1", text)
     text = re.sub(r"(?<!\n)(Приоритет: .+)", r"\n\1", text)
 
-    text = re.sub(r"\s+", " ", text).strip()  # Убираем лишние пробелы
+    # Теперь убираем только лишние пробелы, НЕ удаляя переносы строк!
+    text = re.sub(r"[ \t]+", " ", text).strip()
+    # Удаляем лишние пустые строки, оставляя максимум 1 подряд
+    text = re.sub(r"\n\s*\n+", "\n\n", text).strip()
+
     return text
 
 
