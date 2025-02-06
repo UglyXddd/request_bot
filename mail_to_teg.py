@@ -1,194 +1,167 @@
-import imaplib
-import email
-import telebot
-import time
-import chardet
-from email.header import decode_header
+from bs4 import BeautifulSoup
 import re
-import html
-import json
-from datetime import datetime
 
-REQUESTS_COUNT_FILE = "requests_count.json"
+html_message = """<font face="Verdana, Arial, Helvetica" size="2">
+<font color="#F07D18">Никита</font><br />
+<font color="#F07D18">(50RS0009)Егорьевский городской суд</font><br />
+<font color="#F07D18">(49640)2-97-17</font><br />
+<font color="#F07D18">egorievsk.mo@sudrf.ru</font><br />
+<br />
+<font face="Verdana, Arial, Helvetica" size="2">=-=-=-=-=- Пожалуйста, напишите ответ выше этого сообщения -=-=-=-=-=<br />
+<br />
+Добрый день, коллеги.<br />
+Направляю заявку. Свяжитесь пожалуйста с заявителем для решения проблемы. Вы можете самостоятельно закрыть данную заявку, если при ответе на данное письмо в ТЕМУ письма добавите ==closed== сразу после номера заявки. Например [~XXXXX]: ==closed==<br />
+Текст из данного письма будет выводиться в отчете для судебного департамента как признак закрытия. Как правило там указывается &quot;Выполнено силами филиала&quot;. Рекомендую в тексте описать, какие работы были выполнены для закрытия заявки.<br />
+Просьба пользоваться данной функцией только для закрытия уже существующих заявок.<br />
+<br />
+БУДЬТЕ ВНИМАТЕЛЬНЫ! В ТЕМЕ письма обязательно должен присутствовать номер заявки вида [~XXXXX].<br />
+<br />
+<br /><br />
+<fieldset style="margin-bottom: 6px; color: #333333;FONT: 11px Verdana, Tahoma;PADDING:3px;">
+<legend>История Запроса</legend>
 
+<b>Никита</b> (Клиент) Запись от: 05-02-2025 15:56:05
+<hr style="margin-bottom: 6px; height: 1px; BORDER: none; color: #cfcfcf; background-color: #cfcfcf;" />
+<br />
+<font color="#F07D18">Добрый день! Прошу дать ответ по заявке, будет ли производится ремонт/замена жесткого диска и в какие сроки нам этого ожидать? Ответ ждём очень долго. Просим хотя бы проинформировать по данному вопросу.</font>
 
-def get_request_number():
-    """Функция возвращает номер заявки за день и увеличивает его в файле"""
-    today = datetime.now().strftime("%m%d")  # MMDD
+<br /><br />
 
-    try:
-        with open(REQUESTS_COUNT_FILE, "r") as file:
-            data = json.load(file)
-    except (FileNotFoundError, json.JSONDecodeError):
-        data = {}
+<b>Ирина Полякова</b> (Персонал) Запись от: 19-12-2024 12:12:26
+<hr style="margin-bottom: 6px; height: 1px; BORDER: none; color: #cfcfcf; background-color: #cfcfcf;" />
+<br />
+<font color="#F07D18">=-=-=-=-=- Пожалуйста, напишите ответ выше этого сообщения -=-=-=-=-=<br />
+<br />
+Добрый день, коллеги. <br />
+Направляю заявку. Свяжитесь пожалуйста с заявителем для решения проблемы. Вы можете самостоятельно закрыть данную заявку, если при ответе на данное письмо в ТЕМУ письма добавите ==closed== сразу после номера заявки. Например [~XXXXX]: ==closed==<br />
+Текст из данного письма будет выводиться в отчете для судебного департамента как признак закрытия. Как правило там указывается &quot;Выполнено силами филиала&quot;. Рекомендую в тексте описать, какие работы были выполнены для закрытия заявки.<br />
+Просьба пользоваться данной функцией только для закрытия уже существующих заявок.<br />
+<br />
+БУДЬТЕ ВНИМАТЕЛЬНЫ! В ТЕМЕ письма обязательно должен присутствовать номер заявки вида [~XXXXX]. Вместо XXXXX номер заявки.<br />
+<br />
+</font>
 
-    request_number = data.get(today, 0) + 1
-    data[today] = request_number
+<br /><br />
 
-    with open(REQUESTS_COUNT_FILE, "w") as file:
-        json.dump(data, file)
+<b>Никита</b> (Клиент) Запись от: 19-12-2024 11:58:52
+<hr style="margin-bottom: 6px; height: 1px; BORDER: none; color: #cfcfcf; background-color: #cfcfcf;" />
+<br />
+<font color="#F07D18">Прошу отремотировать АРМ Инвент. номер 9000153861304, сер. номер 59MASPXFS9WG, год выпуска 2019, вышел из строя жесткий диск Toshiba PC P300 1TB</font>
 
-    return request_number
+<br /><br />
 
+<b>Ирина Полякова</b> (Персонал) Запись от: 27-11-2024 10:27:43
+<hr style="margin-bottom: 6px; height: 1px; BORDER: none; color: #cfcfcf; background-color: #cfcfcf;" />
+<br />
+<font color="#F07D18">=-=-=-=-=- Пожалуйста, напишите ответ выше этого сообщения -=-=-=-=-=<br />
+<br />
+Добрый день, коллеги,<br />
+Направляю заявку. Свяжитесь пожалуйста с заявителем для решения проблемы. Вы можете самостоятельно закрыть данную заявку, если при ответе на данное письмо в ТЕМУ письма добавите ==closed== сразу после номера заявки. Например [~XXXXX]: ==closed==<br />
+Текст из данного письма будет выводиться в отчете для судебного департамента как признак закрытия. Как правило там указывается &quot;Выполнено силами филиала&quot;. Рекомендую в тексте описать, какие работы были выполнены для закрытия заявки.<br />
+Просьба пользоваться данной функцией только для закрытия уже существующих заявок.<br />
+<br />
+БУДЬТЕ ВНИМАТЕЛЬНЫ! В ТЕМЕ письма обязательно должен присутствовать номер заявки вида [~XXXXX].<br />
+<br />
+</font>
 
-# Настройки
-MAIL_SERVER = "imap.mail.ru"
-MAIL_USER = "ant.mosco_w@mail.ru"
-MAIL_PASS = "aWaVR6q6mpUgP3tuDUY8"
-TELEGRAM_TOKEN = "7793677369:AAEw15axx4UMdqnIAYmPX6EvkwIuzTVfl1s"
-CHAT_ID = "-1002284366831"
+<br /><br />
 
-bot = telebot.TeleBot(TELEGRAM_TOKEN)
+<b>Никита</b> (Клиент) Запись от: 27-11-2024 09:35:50
+<hr style="margin-bottom: 6px; height: 1px; BORDER: none; color: #cfcfcf; background-color: #cfcfcf;" />
+<br />
+<font color="#F07D18">самому жесткому диску инвентарный номер не присваивается, вот инвентарный номер компьютера: 9000153861304</font>
 
+<br /><br />
 
-def decode_email_header(header):
-    """Функция для корректного декодирования темы письма"""
-    decoded_header = decode_header(header)
-    subject = ""
-    for part, encoding in decoded_header:
-        if isinstance(part, bytes):
-            encoding = encoding if encoding else "utf-8"
-            try:
-                subject += part.decode(encoding, errors="ignore")
-            except:
-                subject += part.decode("utf-8", errors="ignore")
-        else:
-            subject += part
-    print(subject, "Название темы.\n")
-    return subject.strip()
+<b>Гульмира Сулима</b> (Персонал) Запись от: 08-11-2024 15:00:56
+<hr style="margin-bottom: 6px; height: 1px; BORDER: none; color: #cfcfcf; background-color: #cfcfcf;" />
+<br />
+<font color="#F07D18">=-=-=-=-=- Пожалуйста, напишите ответ выше этого сообщения -=-=-=-=-=<br />
+<br />
+Добрый день.<br />
+<br />
+Просьба указать инвентарный номер. <br />
+<br />
+БУДЬТЕ ВНИМАТЕЛЬНЫ! При дальнейшей переписке НЕ ИЗМЕНЯЙТЕ тему (Subject) письма, так как она содержит техническую информацию для Системы!<br />
+<br />
+Служба технической поддержки ГАС «Правосудие»<br />
+<br />
+<br />
+<br />
+</font>
 
+<br /><br />
 
-def clean_html_text(text):
-    """Функция для удаления HTML-тегов, декодирования символов и форматирования"""
+<b>Даниил</b> (Клиент) Запись от: 08-11-2024 14:53:37
+<hr style="margin-bottom: 6px; height: 1px; BORDER: none; color: #cfcfcf; background-color: #cfcfcf;" />
+<br />
+<font color="#F07D18">Прошу произвести осмотр и ремонт жесткого диска модели Toshiba PC P300 1TB, сер№ 59MASPXFS9WG, 2019 года выпуска, в виду технической неисправности жесткого диска.</font>
 
-    text = html.unescape(text)
-
-    text = re.sub(r"<a\s+.*?>.*?</a>", "", text, flags=re.DOTALL)
-    text = re.sub(r"<hr\s+.*?>", "", text, flags=re.DOTALL)
-
-    text = re.sub(r"<.*?>", "", text)
-
-    text = re.sub(r"(?<!\n)(Запись от: \d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2})", r"\n\1", text)
-
-    text = re.sub(r"\n\s*\n+", "\n\n", text).strip()
-
-    return text
-
-
-def extract_relevant_info(body):
-    """Фильтрует и оставляет только нужную информацию"""
-    body = clean_html_text(body)
-
-    history_match = re.search(r"Запись от:.*?(?=ID запроса:)", body, re.DOTALL)
-    history = history_match.group(0).strip() if history_match else ""
-
-    details_match = re.search(r"ID запроса:.*", body, re.DOTALL)
-    details = details_match.group(0).strip() if details_match else ""
-
-    return history, details
-
-
-def get_latest_email():
-    try:
-        print("⏳ Подключаюсь к IMAP...")
-        mail = imaplib.IMAP4_SSL(MAIL_SERVER)
-        mail.login(MAIL_USER, MAIL_PASS)
-        print("✅ Вход в почту успешен!")
-
-        mail.select("inbox")
-        result, data = mail.search(None, "UNSEEN")
-        mail_ids = data[0].split()
-
-        print(f"📩 Найдено новых писем: {len(mail_ids)}")
-
-        messages = []
-        for num in mail_ids:
-            print(f"🔄 Обрабатываю письмо ID: {num}")
-
-            result, msg_data = mail.fetch(num, "(RFC822)")
-            raw_email = msg_data[0][1]
-            msg = email.message_from_bytes(raw_email)
-
-            subject = msg["subject"] if msg["subject"] else "(Без темы)"
-            subject = decode_email_header(subject)
-
-            if not subject.strip().startswith("[~"):
-                print(f"🚫 Письмо проигнорировано (не заявка). Тема: {subject}")
-                continue
-
-            body = ""
-            if msg.is_multipart():
-                for part in msg.walk():
-                    if part.get_content_type() == "text/plain":
-                        payload = part.get_payload(decode=True)
-                        encoding = part.get_content_charset()
-
-                        if encoding is None:
-                            detected_encoding = chardet.detect(payload)['encoding']
-                            encoding = detected_encoding if detected_encoding else "utf-8"
-
-                        body = payload.decode(encoding, errors="ignore").strip()
-                        break
-            else:
-                payload = msg.get_payload(decode=True)
-                encoding = msg.get_content_charset()
-
-                if encoding is None:
-                    detected_encoding = chardet.detect(payload)['encoding']
-                    encoding = detected_encoding if detected_encoding else "utf-8"
-
-                body = payload.decode(encoding, errors="ignore").strip()
-
-            history, details = extract_relevant_info(body)
-
-            if history:
-                request_number = get_request_number()
-                today_date = datetime.now().strftime("%m%d")  # MMDD
-
-                ticket_id_match = re.search(r"\[~(\d+)\]", subject)
-                ticket_id = ticket_id_match.group(1) if ticket_id_match else "0000"
-
-                formatted_subject = f"{today_date}-{request_number} {subject.replace(f'[~{ticket_id}]', '').strip()} [~{ticket_id}]"
-
-                print(f"🎯 Новая тема заявки: {formatted_subject}")
-
-                # Создаём сообщение
-                details = ""
-                history = history.replace("Детали Запроса", '')
-                clean_message = f"{formatted_subject}\n\n{history}\n\n{details}"
-                messages.append(clean_message)
-                print(f"✅ Письмо обработано и готово к отправке!")
-
-        mail.logout()
-        return messages
-
-    except Exception as e:
-        print(f"❌ Ошибка в get_latest_email: {e}")
-        return []
+<br /><br />
 
 
-def send_to_telegram(messages):
-    for msg in messages:
-        try:
-            print("📤 Отправляю в Telegram...")
-            bot.send_message(CHAT_ID, msg)
-            print("✅ Отправлено!")
-        except Exception as e:
-            print(f"❌ Ошибка при отправке в Telegram: {e}")
+</fieldset>
 
 
-# Основной цикл
-while True:
-    print("🔍 Проверяю почту...")
-    emails = get_latest_email()
+Детали Запроса<br />
+<hr style="margin-bottom: 6px; height: 1px; BORDER: none; color: #cfcfcf; background-color: #cfcfcf;" />
+ID запроса: 1358264<br />
+Отдел: Обслуживание программных и технических средств<br />
+Тип: Выезд<br />
+Статус: <font color="">Передана соисполнителю</font><br />
+Приоритет: <font color="#F07D18">Высокий</font><br />
 
-    if emails:
-        print("📬 Найдены новые заявки, отправляю в Telegram...")
-        send_to_telegram(emails)
-    else:
-        print("📭 Новых заявок нет.")
+<br />
+Центральная служба технической поддержки  ГАС Правосудие<br />
+</font>
+"""
 
-    time.sleep(599)
-    print("😴 Поспал 10 минут...\n===================================================================")
+print("\n\n\n========================= Вход: \n\n\n", html_message, "\n\n\n\n\n УЛЮЛЮ\n\n\n")
 
+# Парсим HTML
+soup = BeautifulSoup(html_message, 'html.parser')
+
+# Разбираем HTML и находим содержимое между клиентскими блоками вручную
+
+# Преобразуем HTML в текст без тегов
+plain_text = soup.get_text("\n", strip=True)
+
+# Разделяем текст на строки
+lines = plain_text.split("\n")
+
+# Переменная для хранения результата
+result = []
+current_entry = []
+is_collecting = False
+
+for line in lines:
+    # Если строка содержит "(Клиент)", начинаем сбор
+    if "(Клиент)" in line:
+        if current_entry:
+            result.append("\n".join(current_entry))  # Завершаем предыдущий блок
+        current_entry = [line]  # Начинаем новый блок
+        is_collecting = True
+        continue
+
+    # Если строка содержит "(Персонал)", прекращаем сбор
+    if "(Персонал)" in line:
+        if current_entry:
+            result.append("\n".join(current_entry))  # Завершаем текущий блок
+        current_entry = []
+        is_collecting = False
+        continue
+
+    # Если в блоке клиента, добавляем содержимое
+    if is_collecting and line.strip():
+        current_entry.append(line.strip())
+
+# Добавляем последний блок, если есть
+if current_entry:
+    result.append("\n".join(current_entry))
+
+# Объединяем все записи в переменную result
+result_text = "\n\n".join(result)
+
+# Выводим итоговый результат
+print(result_text)
 
