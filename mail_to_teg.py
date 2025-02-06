@@ -121,9 +121,8 @@ print("\n\n\n========================= Вход: \n\n\n", html_message, "\n\n\n\
 # Парсим HTML
 soup = BeautifulSoup(html_message, 'html.parser')
 
-# Разбираем HTML и находим содержимое между клиентскими блоками вручную
 
-# Преобразуем HTML в текст без тегов
+# Разбираем HTML и преобразуем в чистый текст
 plain_text = soup.get_text("\n", strip=True)
 
 # Разделяем текст на строки
@@ -134,7 +133,11 @@ result = []
 current_entry = []
 is_collecting = False
 
-for line in lines:
+for i, line in enumerate(lines):
+    # Прекращаем обработку, если встречаем "Детали Запроса"
+    if "Детали Запроса" in line:
+        break
+
     # Если строка содержит "(Клиент)", начинаем сбор
     if "(Клиент)" in line:
         if current_entry:
@@ -151,8 +154,11 @@ for line in lines:
         is_collecting = False
         continue
 
-    # Если в блоке клиента, добавляем содержимое
+    # Если в блоке клиента, добавляем содержимое, исключая лишние имена перед "(Персонал)"
     if is_collecting and line.strip():
+        # Проверяем, что следующая строка не является именем перед "(Персонал)"
+        if i + 1 < len(lines) and "(Персонал)" in lines[i + 1]:
+            continue  # Пропускаем эту строку, чтобы избежать вывода лишних имен
         current_entry.append(line.strip())
 
 # Добавляем последний блок, если есть
