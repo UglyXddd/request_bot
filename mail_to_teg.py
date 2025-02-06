@@ -33,10 +33,10 @@ def get_request_number():
 
 # Настройки
 MAIL_SERVER = "imap.mail.ru"
-MAIL_USER = "axer1998@mail.ru"
-MAIL_PASS = "fdpZ7FHjnQnt4bDd8uwH"
+MAIL_USER = "ant.mosco_w@mail.ru"
+MAIL_PASS = "aWaVR6q6mpUgP3tuDUY8"
 TELEGRAM_TOKEN = "7793677369:AAEw15axx4UMdqnIAYmPX6EvkwIuzTVfl1s"
-CHAT_ID = "-1002480536548"
+CHAT_ID = "-1002284366831"
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
@@ -199,7 +199,7 @@ while True:
     else:
         print("📭 Новых заявок нет.")
 
-    time.sleep(5)
+    time.sleep(599)
     print("😴 Поспал 10 минут...\n===================================================================")
 
 
