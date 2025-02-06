@@ -38,7 +38,27 @@ MAIL_PASS = "aWaVR6q6mpUgP3tuDUY8"
 TELEGRAM_TOKEN = "7793677369:AAEw15axx4UMdqnIAYmPX6EvkwIuzTVfl1s"
 CHAT_ID = "-1002284366831"
 
+MAIL_SERVER = "imap.mail.ru"
+MAIL_USER = "axer1998@mail.ru"
+MAIL_PASS = "fdpZ7FHjnQnt4bDd8uwH"
+TELEGRAM_TOKEN = "7793677369:AAEw15axx4UMdqnIAYmPX6EvkwIuzTVfl1s"
+CHAT_ID = "-1002480536548"
+
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
+
+
+def remove_redundant_text(text):
+    """Удаляет повторяющиеся системные фразы из письма."""
+    redundant_patterns = [
+        r"=-=-=-=-=- Пожалуйста, напишите ответ выше этого сообщения -=-=-=-=-=",
+        r"Добрый день, коллеги\.\nНаправляю заявку.*?Просьба пользоваться данной функцией только для закрытия уже существующих заявок\.",
+        r"БУДЬТЕ ВНИМАТЕЛЬНЫ! В ТЕМЕ письма обязательно должен присутствовать номер заявки вида \[~\d+\]\."
+    ]
+
+    for pattern in redundant_patterns:
+        text = re.sub(pattern, "", text, flags=re.DOTALL | re.IGNORECASE).strip()
+
+    return text
 
 
 def decode_email_header(header):
@@ -71,6 +91,9 @@ def clean_html_text(text):
     text = re.sub(r"(?<!\n)(Запись от: \d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2})", r"\n\1", text)
 
     text = re.sub(r"\n\s*\n+", "\n\n", text).strip()
+
+    # Удаляем повторяющиеся системные фразы
+    text = remove_redundant_text(text)
 
     return text
 
@@ -115,9 +138,10 @@ def get_latest_email():
             if not subject.strip().startswith("[~"):
                 print(f"🚫 Письмо проигнорировано (не заявка). Тема: {subject}")
                 continue
-
+            print("#################\nПисьмо не проигнорилось, проверка на мультпарт\n####################")
             body = ""
             if msg.is_multipart():
+                print("#################\nПисьмо мульитапр\n####################")
                 for part in msg.walk():
                     if part.get_content_type() == "text/plain":
                         payload = part.get_payload(decode=True)
@@ -130,6 +154,7 @@ def get_latest_email():
                         body = payload.decode(encoding, errors="ignore").strip()
                         break
             else:
+                print("#################\nПисьмо не мультипарт\n####################")
                 payload = msg.get_payload(decode=True)
                 encoding = msg.get_content_charset()
 
@@ -140,8 +165,9 @@ def get_latest_email():
                 body = payload.decode(encoding, errors="ignore").strip()
 
             history, details = extract_relevant_info(body)
-
+            print("#################\nПроверка если история есть\n####################\n", history, '\n', details)
             if history:
+                print("#################\nИстория есть\n####################")
                 request_number = get_request_number()
                 today_date = datetime.now().strftime("%m%d")  # MMDD
 
@@ -160,6 +186,7 @@ def get_latest_email():
                 print(f"✅ Письмо обработано и готово к отправке!")
 
         mail.logout()
+        print("########################\nСообщение передано\n########################")
         return messages
 
     except Exception as e:
