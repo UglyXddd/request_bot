@@ -12,6 +12,7 @@ from bs4 import BeautifulSoup
 
 REQUESTS_COUNT_FILE = "requests_count.json"
 
+print("Хороший день, чтобы поработать вместо Алёны")
 
 def get_request_number():
     """Функция возвращает номер заявки за день и увеличивает его в файле"""
