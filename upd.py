@@ -8,6 +8,7 @@ import re
 import html
 import json
 from datetime import datetime
+from bs4 import BeautifulSoup
 
 REQUESTS_COUNT_FILE = "requests_count.json"
 
@@ -33,32 +34,12 @@ def get_request_number():
 
 # Настройки
 MAIL_SERVER = "imap.mail.ru"
-MAIL_USER = "ant.mosco_w@mail.ru"
-MAIL_PASS = "aWaVR6q6mpUgP3tuDUY8"
-TELEGRAM_TOKEN = "7793677369:AAEw15axx4UMdqnIAYmPX6EvkwIuzTVfl1s"
-CHAT_ID = "-1002284366831"
-
-MAIL_SERVER = "imap.mail.ru"
 MAIL_USER = "axer1998@mail.ru"
 MAIL_PASS = "fdpZ7FHjnQnt4bDd8uwH"
 TELEGRAM_TOKEN = "7793677369:AAEw15axx4UMdqnIAYmPX6EvkwIuzTVfl1s"
 CHAT_ID = "-1002480536548"
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
-
-
-def remove_redundant_text(text):
-    """Удаляет повторяющиеся системные фразы из письма."""
-    redundant_patterns = [
-        r"=-=-=-=-=- Пожалуйста, напишите ответ выше этого сообщения -=-=-=-=-=",
-        r"Добрый день, коллеги\.\nНаправляю заявку.*?Просьба пользоваться данной функцией только для закрытия уже существующих заявок\.",
-        r"БУДЬТЕ ВНИМАТЕЛЬНЫ! В ТЕМЕ письма обязательно должен присутствовать номер заявки вида \[~\d+\]\."
-    ]
-
-    for pattern in redundant_patterns:
-        text = re.sub(pattern, "", text, flags=re.DOTALL | re.IGNORECASE).strip()
-
-    return text
 
 
 def decode_email_header(header):
@@ -74,41 +55,58 @@ def decode_email_header(header):
                 subject += part.decode("utf-8", errors="ignore")
         else:
             subject += part
-    print(subject, "Название темы.\n")
     return subject.strip()
 
 
-def clean_html_text(text):
-    """Функция для удаления HTML-тегов, декодирования символов и форматирования"""
-
-    text = html.unescape(text)
-
-    text = re.sub(r"<a\s+.*?>.*?</a>", "", text, flags=re.DOTALL)
-    text = re.sub(r"<hr\s+.*?>", "", text, flags=re.DOTALL)
-
-    text = re.sub(r"<.*?>", "", text)
-
-    text = re.sub(r"(?<!\n)(Запись от: \d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2})", r"\n\1", text)
-
-    text = re.sub(r"\n\s*\n+", "\n\n", text).strip()
-
-    # Удаляем повторяющиеся системные фразы
-    text = remove_redundant_text(text)
-
-    return text
-
-
 def extract_relevant_info(body):
-    """Фильтрует и оставляет только нужную информацию"""
-    body = clean_html_text(body)
+    """Функция извлекает нужную информацию из HTML-сообщения"""
+    soup = BeautifulSoup(body, 'html.parser')
 
-    history_match = re.search(r"Запись от:.*?(?=ID запроса:)", body, re.DOTALL)
-    history = history_match.group(0).strip() if history_match else ""
+    # Разбираем HTML и преобразуем в чистый текст
+    plain_text = soup.get_text("\n", strip=True)
 
-    details_match = re.search(r"ID запроса:.*", body, re.DOTALL)
-    details = details_match.group(0).strip() if details_match else ""
+    # Разделяем текст на строки
+    lines = plain_text.split("\n")
 
-    return history, details
+    # Переменная для хранения результата
+    result = []
+    current_entry = []
+    is_collecting = False
+
+    for i, line in enumerate(lines):
+        # Прекращаем обработку, если встречаем "Детали Запроса"
+        if "Детали Запроса" in line:
+            break
+
+        # Если строка содержит "(Клиент)", начинаем сбор
+        if "(Клиент)" in line:
+            if current_entry:
+                result.append("\n".join(current_entry))  # Завершаем предыдущий блок
+            current_entry = [line]  # Начинаем новый блок
+            is_collecting = True
+            continue
+
+        # Если строка содержит "(Персонал)", прекращаем сбор
+        if "(Персонал)" in line:
+            if current_entry:
+                result.append("\n".join(current_entry))  # Завершаем текущий блок
+            current_entry = []
+            is_collecting = False
+            continue
+
+        # Если в блоке клиента, добавляем содержимое, исключая лишние имена перед "(Персонал)"
+        if is_collecting and line.strip():
+            # Проверяем, что следующая строка не является именем перед "(Персонал)"
+            if i + 1 < len(lines) and "(Персонал)" in lines[i + 1]:
+                continue  # Пропускаем эту строку, чтобы избежать вывода лишних имен
+            current_entry.append(line.strip())
+
+    # Добавляем последний блок, если есть
+    if current_entry:
+        result.append("\n".join(current_entry))
+
+    # Объединяем все записи в переменную result
+    return "\n\n".join(result)
 
 
 def get_latest_email():
@@ -138,12 +136,11 @@ def get_latest_email():
             if not subject.strip().startswith("[~"):
                 print(f"🚫 Письмо проигнорировано (не заявка). Тема: {subject}")
                 continue
-            print("#################\nПисьмо не проигнорилось, проверка на мультпарт\n####################")
+
             body = ""
             if msg.is_multipart():
-                print("#################\nПисьмо мульитапр\n####################")
                 for part in msg.walk():
-                    if part.get_content_type() == "text/plain":
+                    if part.get_content_type() == "text/html":
                         payload = part.get_payload(decode=True)
                         encoding = part.get_content_charset()
 
@@ -154,7 +151,6 @@ def get_latest_email():
                         body = payload.decode(encoding, errors="ignore").strip()
                         break
             else:
-                print("#################\nПисьмо не мультипарт\n####################")
                 payload = msg.get_payload(decode=True)
                 encoding = msg.get_content_charset()
 
@@ -164,10 +160,8 @@ def get_latest_email():
 
                 body = payload.decode(encoding, errors="ignore").strip()
 
-            history, details = extract_relevant_info(body)
-            print("#################\nПроверка если история есть\n####################\n", history, '\n', details)
+            history = extract_relevant_info(body)
             if history:
-                print("#################\nИстория есть\n####################")
                 request_number = get_request_number()
                 today_date = datetime.now().strftime("%m%d")  # MMDD
 
@@ -179,14 +173,11 @@ def get_latest_email():
                 print(f"🎯 Новая тема заявки: {formatted_subject}")
 
                 # Создаём сообщение
-                details = ""
-                history = history.replace("Детали Запроса", '')
-                clean_message = f"{formatted_subject}\n\n{history}\n\n{details}"
+                clean_message = f"{formatted_subject}\n\n{history}"
                 messages.append(clean_message)
                 print(f"✅ Письмо обработано и готово к отправке!")
 
         mail.logout()
-        print("########################\nСообщение передано\n########################")
         return messages
 
     except Exception as e:
@@ -217,5 +208,3 @@ while True:
 
     time.sleep(599)
     print("😴 Поспал 10 минут...\n===================================================================")
-
-
