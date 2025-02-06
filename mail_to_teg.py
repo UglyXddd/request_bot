@@ -6,6 +6,30 @@ import chardet  # Определение кодировки
 from email.header import decode_header
 import re
 import html
+import json
+from datetime import datetime
+
+REQUESTS_COUNT_FILE = "requests_count.json"
+
+
+def get_request_number():
+    """Функция возвращает номер заявки за день и увеличивает его в файле"""
+    today = datetime.now().strftime("%m%d")  # Получаем дату в формате MMDD
+
+    try:
+        with open(REQUESTS_COUNT_FILE, "r") as file:
+            data = json.load(file)
+    except (FileNotFoundError, json.JSONDecodeError):
+        data = {}  # Если файла нет, создаем пустой словарь
+
+    request_number = data.get(today, 0) + 1  # Увеличиваем номер заявки
+    data[today] = request_number  # Сохраняем обновленный номер
+
+    with open(REQUESTS_COUNT_FILE, "w") as file:
+        json.dump(data, file)
+
+    return request_number
+
 
 # Настройки
 MAIL_SERVER = "imap.mail.ru"
@@ -126,11 +150,23 @@ def get_latest_email():
             # Фильтруем только нужную информацию
             history, details = extract_relevant_info(body)
 
-            if history and details:
-                details = ''
-                print("------------------------\n", subject, "\n-------------------\n", history, "\n-----------------")
+            if history:
+                request_number = get_request_number()  # Получаем номер заявки за день
+                today_date = datetime.now().strftime("%m%d")  # Дата в формате MMDD
+
+                # Извлекаем номер заявки [~ID] из темы письма
+                ticket_id_match = re.search(r"\[~(\d+)\]", subject)
+                ticket_id = ticket_id_match.group(1) if ticket_id_match else "0000"
+
+                # Формируем новый заголовок
+                formatted_subject = f"{today_date}-{request_number} {subject.replace(f'[~{ticket_id}]', '').strip()} [~{ticket_id}]"
+
+                print(f"🎯 Новая тема заявки: {formatted_subject}")
+
+                # Создаём сообщение
+                details = ""
                 history = history.replace("Детали Запроса", '')
-                clean_message = f"Тема: {subject}\n\n{history}\n\n{details}"
+                clean_message = f"{formatted_subject}\n\n{history}\n\n{details}"
                 messages.append(clean_message)
                 print(f"✅ Письмо обработано и готово к отправке!")
 
