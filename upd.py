@@ -171,7 +171,7 @@ def get_latest_email():
                 formatted_subject = f"{today_date}-{request_number} {subject.replace(f'[~{ticket_id}]', '').strip()} [~{ticket_id}]"
 
                 print(f"🎯 Новая тема заявки: {formatted_subject}")
-
+                history = re.sub(r'<.*?>', '', history)
                 # Создаём сообщение
                 clean_message = f"{formatted_subject}\n\n{history}"
                 messages.append(clean_message)
@@ -183,6 +183,7 @@ def get_latest_email():
     except Exception as e:
         print(f"❌ Ошибка в get_latest_email: {e}")
         return []
+
 
 
 def send_to_telegram(messages):
