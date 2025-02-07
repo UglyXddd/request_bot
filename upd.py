@@ -14,8 +14,6 @@ REQUESTS_COUNT_FILE = "requests_count.json"
 
 print("Хороший день, чтобы поработать вместо Алёны!!!")
 
-time.sleep(5)
-
 
 def get_request_number():
     """Функция возвращает номер заявки за день и увеличивает его в файле"""
@@ -41,7 +39,8 @@ MAIL_SERVER = "imap.mail.ru"
 MAIL_USER = "ant.mosco_w@mail.ru"
 MAIL_PASS = "aWaVR6q6mpUgP3tuDUY8"
 TELEGRAM_TOKEN = "7793677369:AAEw15axx4UMdqnIAYmPX6EvkwIuzTVfl1s"
-CHAT_ID = "-1002284366831"
+CHAT_ID = "-1002480536548"
+
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
@@ -63,54 +62,24 @@ def decode_email_header(header):
 
 
 def extract_relevant_info(body):
-    """Функция извлекает нужную информацию из HTML-сообщения"""
+    res = []
     soup = BeautifulSoup(body, 'html.parser')
 
-    # Разбираем HTML и преобразуем в чистый текст
-    plain_text = soup.get_text("\n", strip=True)
+    for tag in soup.find_all(True, recursive=True):
+        print(f"{tag}  трай по тэгу")
+        client = []
+        print(f"Промежуточный вывод клиент {client}")
+        if tag.name == 'b':
+            if 'клиент' in tag.next_sibling.text.lower():
+                client.append(tag.text.strip())
+                client.append(tag.next_sibling.text.strip())
+                client.append('\n')
+                client.append(tag.find_next('font').text.strip())
+                client.append('\n')
 
-    # Разделяем текст на строки
-    lines = plain_text.split("\n")
+        res.append(''.join(client)) if client else None
 
-    # Переменная для хранения результата
-    result = []
-    current_entry = []
-    is_collecting = False
-
-    for i, line in enumerate(lines):
-        # Прекращаем обработку, если встречаем "Детали Запроса"
-        if "Детали Запроса" in line:
-            break
-
-        # Если строка содержит "(Клиент)", начинаем сбор
-        if "(Клиент)" in line:
-            if current_entry:
-                result.append("\n".join(current_entry))  # Завершаем предыдущий блок
-            current_entry = [line]  # Начинаем новый блок
-            is_collecting = True
-            continue
-
-        # Если строка содержит "(Персонал)", прекращаем сбор
-        if "(Персонал)" in line:
-            if current_entry:
-                result.append("\n".join(current_entry))  # Завершаем текущий блок
-            current_entry = []
-            is_collecting = False
-            continue
-
-        # Если в блоке клиента, добавляем содержимое, исключая лишние имена перед "(Персонал)"
-        if is_collecting and line.strip():
-            # Проверяем, что следующая строка не является именем перед "(Персонал)"
-            if i + 1 < len(lines) and "(Персонал)" in lines[i + 1]:
-                continue  # Пропускаем эту строку, чтобы избежать вывода лишних имен
-            current_entry.append(line.strip())
-
-    # Добавляем последний блок, если есть
-    if current_entry:
-        result.append("\n".join(current_entry))
-
-    # Объединяем все записи в переменную result
-    return "\n\n".join(result)
+    return '\n\n'.join(res)
 
 
 def get_latest_email():
@@ -136,13 +105,15 @@ def get_latest_email():
 
             subject = msg["subject"] if msg["subject"] else "(Без темы)"
             subject = decode_email_header(subject)
-            print("\nТЕма:\n\n ", subject.strip(), "\n\n\n")
+            print("\nТема: ", subject.strip(), "\n\n\n")
             if not re.match(r"^\[.*?\]:.*", subject.strip()):
                 print(f"🚫 Письмо проигнорировано (не заявка). Тема: {subject}")
                 continue
 
             body = ""
+            print(f"\n\n\n Проверка на мультипарт ")
             if msg.is_multipart():
+                print(f"\n\n\n Письмо мультипарт ")
                 for part in msg.walk():
                     if part.get_content_type() == "text/html":
                         payload = part.get_payload(decode=True)
@@ -155,6 +126,7 @@ def get_latest_email():
                         body = payload.decode(encoding, errors="ignore").strip()
                         break
             else:
+                print(f"\n\n\n Письмо НЕ мультипарт ")
                 payload = msg.get_payload(decode=True)
                 encoding = msg.get_content_charset()
 
@@ -163,8 +135,13 @@ def get_latest_email():
                     encoding = detected_encoding if detected_encoding else "utf-8"
 
                 body = payload.decode(encoding, errors="ignore").strip()
+            print(f"\n\n\n Промежуточный вывод ")
+
+            print(f"\n++++\n+++++\n\n++++\n+++++\n\n++++\n+++++\n\n++++\n+++++\n {body}, \n++++\n+++++\n\n++++\n+++++\n\n++++\n+++++\n\n++++\n+++++\n")
+            body = get_email_body(msg)
 
             history = extract_relevant_info(body)
+            print(f"\n История: {history}")
             if history:
                 request_number = get_request_number()
                 today_date = datetime.now().strftime("%m%d")  # MMDD
@@ -207,6 +184,30 @@ def extract_court_info(body):
         return f"({court_code}) {court_name}"
 
     return ""
+
+
+def get_email_body(msg):
+    """Функция получает текст тела письма (любого формата)"""
+    try:
+        if msg.is_multipart():
+            for part in msg.walk():
+                content_type = part.get_content_type()
+                content_disposition = str(part.get("Content-Disposition"))
+
+                # Игнорируем вложения (файлы)
+                if "attachment" in content_disposition:
+                    continue
+
+                # Берём первую часть, содержащую текст
+                if content_type in ["text/html", "text/plain"]:
+                    return part.get_payload(decode=True).decode(errors="ignore")
+
+        # Если письмо не multipart, просто получаем текст
+        return msg.get_payload(decode=True).decode(errors="ignore")
+
+    except Exception as e:
+        print(f"❌ Ошибка при получении текста письма: {e}")
+        return ""
 
 
 def send_to_telegram(messages):
