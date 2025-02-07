@@ -135,7 +135,7 @@ def get_latest_email():
             subject = msg["subject"] if msg["subject"] else "(Без темы)"
             subject = decode_email_header(subject)
             print("\nТЕма:\n\n ", subject.strip(), "\n\n\n")
-            if not subject.strip().startswith("[~"):
+            if not re.match(r"^\[.*?\]:.*", subject.strip()):
                 print(f"🚫 Письмо проигнорировано (не заявка). Тема: {subject}")
                 continue
 
