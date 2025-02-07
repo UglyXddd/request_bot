@@ -14,6 +14,8 @@ REQUESTS_COUNT_FILE = "requests_count.json"
 
 print("Хороший день, чтобы поработать вместо Алёны!!!")
 
+time.sleep(5)
+
 
 def get_request_number():
     """Функция возвращает номер заявки за день и увеличивает его в файле"""
