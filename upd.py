@@ -14,6 +14,7 @@ REQUESTS_COUNT_FILE = "requests_count.json"
 
 print("Хороший день, чтобы поработать вместо Алёны")
 
+
 def get_request_number():
     """Функция возвращает номер заявки за день и увеличивает его в файле"""
     today = datetime.now().strftime("%m%d")  # MMDD
@@ -169,7 +170,9 @@ def get_latest_email():
                 ticket_id_match = re.search(r"\[~(\d+)\]", subject)
                 ticket_id = ticket_id_match.group(1) if ticket_id_match else "0000"
 
-                formatted_subject = f"{today_date}-{request_number} {subject.replace(f'[~{ticket_id}]', '').strip()} [~{ticket_id}]"
+                court_info = extract_court_info(body)
+
+                formatted_subject = f"{today_date}-{request_number} {subject.replace(f'[~{ticket_id}]', '').strip()} [~{ticket_id}] {court_info}"
 
                 print(f"🎯 Новая тема заявки: {formatted_subject}")
                 history = re.sub(r'<.*?>', '', history)
@@ -184,6 +187,19 @@ def get_latest_email():
     except Exception as e:
         print(f"❌ Ошибка в get_latest_email: {e}")
         return []
+
+
+def extract_court_info(body):
+    """Функция для извлечения кода и названия суда из тела письма"""
+    soup = BeautifulSoup(body, 'html.parser')
+    text = soup.get_text("\n", strip=True)  # Преобразуем HTML в чистый текст
+
+    match = re.search(r"\((\w+)\)([^\n]+)", text)  # Регулярка для поиска кода суда и его названия
+    if match:
+        court_code = match.group(1).strip()
+        court_name = match.group(2).strip()
+        return f"({court_code}) {court_name}"
+    return ""
 
 
 def send_to_telegram(messages):
