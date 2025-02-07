@@ -134,7 +134,7 @@ def get_latest_email():
 
             subject = msg["subject"] if msg["subject"] else "(Без темы)"
             subject = decode_email_header(subject)
-
+            print("\nТЕма:\n\n ", subject.strip(), "\n\n\n")
             if not subject.strip().startswith("[~"):
                 print(f"🚫 Письмо проигнорировано (не заявка). Тема: {subject}")
                 continue
@@ -198,7 +198,12 @@ def extract_court_info(body):
     if match:
         court_code = match.group(1).strip()
         court_name = match.group(2).strip()
+        court_name = re.sub(r"<.*?>", "", court_name)
+        court_code = re.sub(r"<.*?>", "", court_code)
+
+        print("\n\n", court_code, "\n\n", court_name)
         return f"({court_code}) {court_name}"
+
     return ""
 
 
