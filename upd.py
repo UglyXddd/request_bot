@@ -12,7 +12,7 @@ from bs4 import BeautifulSoup
 
 REQUESTS_COUNT_FILE = "requests_count.json"
 
-print("Хороший день, чтобы поработать вместо Алёны!!! v0.8")
+print("Хороший день, чтобы поработать вместо Алёны!!! v0.9")
 
 
 def get_request_number():
@@ -150,8 +150,9 @@ def get_latest_email():
                 ticket_id = ticket_id_match.group(1) if ticket_id_match else "0000"
 
                 court_info = extract_court_info(body)
-
-                formatted_subject = f"{today_date}-{request_number} {subject.replace(f'[~{ticket_id}]', '').strip()} [~{ticket_id}] {court_info}"
+                # Удаляем строку в квадратных скобках с ~ и ticket_id
+                subject_clean = re.sub(r'\[.*?\]', '', subject).strip()
+                formatted_subject = f"{today_date}-{request_number} {subject_clean} [{ticket_id}] {court_info}"
 
                 print(f"🎯 Новая тема заявки: {formatted_subject}")
                 history = re.sub(r'<.*?>', '', history)
