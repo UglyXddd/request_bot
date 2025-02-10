@@ -12,7 +12,7 @@ from bs4 import BeautifulSoup
 
 REQUESTS_COUNT_FILE = "requests_count.json"
 
-print("Хороший день, чтобы поработать вместо Алёны!!!")
+print("Хороший день, чтобы поработать вместо Алёны!!! v0.8")
 
 
 def get_request_number():
@@ -39,7 +39,7 @@ MAIL_SERVER = "imap.mail.ru"
 MAIL_USER = "ant.mosco_w@mail.ru"
 MAIL_PASS = "aWaVR6q6mpUgP3tuDUY8"
 TELEGRAM_TOKEN = "7793677369:AAEw15axx4UMdqnIAYmPX6EvkwIuzTVfl1s"
-CHAT_ID = "-1002480536548"
+CHAT_ID = "-1002284366831"
 
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
@@ -146,7 +146,7 @@ def get_latest_email():
                 request_number = get_request_number()
                 today_date = datetime.now().strftime("%m%d")  # MMDD
 
-                ticket_id_match = re.search(r"\[~(\d+)\]", subject)
+                ticket_id_match = re.search(r"\[(.*?)\]", subject)
                 ticket_id = ticket_id_match.group(1) if ticket_id_match else "0000"
 
                 court_info = extract_court_info(body)
