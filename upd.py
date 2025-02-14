@@ -12,7 +12,7 @@ from bs4 import BeautifulSoup
 
 REQUESTS_COUNT_FILE = "requests_count.json"
 
-print("Хороший день, чтобы поработать вместо Алёны!!! v0.9")
+print("Хороший день, чтобы поработать вместо Алёны!!! v0.10")
 
 
 def get_request_number():
@@ -66,9 +66,7 @@ def extract_relevant_info(body):
     soup = BeautifulSoup(body, 'html.parser')
 
     for tag in soup.find_all(True, recursive=True):
-        print(f"{tag}  трай по тэгу")
         client = []
-        print(f"Промежуточный вывод клиент {client}")
         if tag.name == 'b':
             if 'клиент' in tag.next_sibling.text.lower():
                 client.append(tag.text.strip())
@@ -117,9 +115,7 @@ def get_latest_email():
                 continue
 
             body = ""
-            print(f"\n\n\n Проверка на мультипарт ")
             if msg.is_multipart():
-                print(f"\n\n\n Письмо мультипарт ")
                 for part in msg.walk():
                     if part.get_content_type() == "text/html":
                         payload = part.get_payload(decode=True)
@@ -132,7 +128,6 @@ def get_latest_email():
                         body = payload.decode(encoding, errors="ignore").strip()
                         break
             else:
-                print(f"\n\n\n Письмо НЕ мультипарт ")
                 payload = msg.get_payload(decode=True)
                 encoding = msg.get_content_charset()
 
@@ -141,13 +136,11 @@ def get_latest_email():
                     encoding = detected_encoding if detected_encoding else "utf-8"
 
                 body = payload.decode(encoding, errors="ignore").strip()
-            print(f"\n\n\n Промежуточный вывод ")
 
-            print(f"\n++++\n+++++\n\n++++\n+++++\n\n++++\n+++++\n\n++++\n+++++\n {body}, \n++++\n+++++\n\n++++\n+++++\n\n++++\n+++++\n\n++++\n+++++\n")
             body = get_email_body(msg)
 
             history = extract_relevant_info(body)
-            print(f"\n История: {history}")
+
             if history:
                 request_number = get_request_number()
                 today_date = datetime.now().strftime("%m%d")  # MMDD
@@ -187,7 +180,6 @@ def extract_court_info(body):
         court_name = re.sub(r"<.*?>", "", court_name)
         court_code = re.sub(r"<.*?>", "", court_code)
 
-        print("\n\n", court_code, "\n\n", court_name)
         return f"({court_code}) {court_name}"
 
     return ""
