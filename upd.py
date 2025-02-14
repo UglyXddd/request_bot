@@ -16,7 +16,7 @@ from datetime import datetime
 
 REQUESTS_COUNT_FILE = "requests_count.json"
 
-print("Хороший день, чтобы поработать вместо Алёны!!! v0.10")
+print("Хороший день, чтобы поработать вместо Алёны!!! v0.12")
 
 
 def get_request_number():
@@ -44,10 +44,8 @@ MAIL_USER = "ant.mosco_w@mail.ru"
 MAIL_PASS = "aWaVR6q6mpUgP3tuDUY8"
 TELEGRAM_TOKEN = "7793677369:AAEw15axx4UMdqnIAYmPX6EvkwIuzTVfl1s"
 CHAT_ID = "-1002284366831"
-#TELEGRAM_TOKEN = "7793677369:AAEw15axx4UMdqnIAYmPX6EvkwIuzTVfl1s"
-TELEGRAM_TOKEN = "5965866857:AAFUDbzZCgSPJWYOT5fp71c7PxBq6SFNBss"
-#CHAT_ID = "-1002284366831"
-CHAT_ID = "650065041"
+#TELEGRAM_TOKEN = "5965866857:AAFUDbzZCgSPJWYOT5fp71c7PxBq6SFNBss" # для тестов
+#CHAT_ID = "650065041" # для тестов
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
@@ -102,10 +100,10 @@ def get_latest_email():
 
         mail.select("inbox")
 
-        result, data = mail.search(None, "SEEN") #для тестов
-        #result, data = mail.search(None, "UNSEEN")
-        mail_ids = data[0].split()[-10:]  # Для тестов
-        #mail_ids = data[0].split()
+        #result, data = mail.search(None, "SEEN") #для тестов
+        result, data = mail.search(None, "UNSEEN")
+        #mail_ids = data[0].split()[-30:]  # Для тестов
+        mail_ids = data[0].split()
 
         print(f"📩 Найдено писем для теста: {len(mail_ids)}")
 
@@ -240,6 +238,8 @@ def extract_request_data(email_body):
         if history_fieldset:
             request_text = history_fieldset.get_text("\n", strip=True)
 
+    request_text = clean_request_text(request_text)  # Очистка текста
+
     return court_name, request_id, request_date, request_text
 
 
@@ -254,6 +254,45 @@ def write_to_google_sheets(court_name, ticket_id, request_date, request_text, en
     sheet.append_row(new_row, value_input_option="RAW")
 
     print("✅ Данные добавлены в Google Sheets!")
+
+
+def clean_request_text(request_text):
+    """Функция очищает текст заявки от ненужных частей"""
+    lines = request_text.split("\n")
+    cleaned_lines = []
+    skip_mode = False
+    remove_next_two = 0
+
+    for i, line in enumerate(lines):
+        line = line.strip()
+
+        # 1️⃣ Убираем блок "История Запроса" → "(Клиент)"
+        if line.startswith("История Запроса"):
+            skip_mode = True  # Начинаем удалять
+            continue  # Не добавляем в итоговый список
+
+        if skip_mode and line.startswith("(Клиент)"):
+            continue  # Игнорируем строку с "(Клиент)", но дальше идём по коду
+
+        if skip_mode and not line.startswith("(Клиент)"):
+            skip_mode = False  # Вышли из блока "История Запроса"
+
+        if skip_mode:
+            continue  # Пока в блоке "История Запроса", ничего не записываем
+
+        # 2️⃣ Удаляем строки с "--" и две строки после них
+        if line == "--":
+            remove_next_two = 2  # Следующие 2 строки удаляем
+            continue  # "--" тоже удаляем
+
+        if remove_next_two > 0:
+            remove_next_two -= 1  # Пропускаем 2 строки после "--"
+            continue
+
+        # Добавляем чистую строку в результат
+        cleaned_lines.append(line)
+
+    return "\n".join(cleaned_lines)
 
 
 # Основной цикл
