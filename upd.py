@@ -101,14 +101,16 @@ def get_latest_email():
         print("✅ Вход в почту успешен!")
 
         mail.select("inbox")
+
         result, data = mail.search(None, "SEEN") #для тестов
         #result, data = mail.search(None, "UNSEEN")
         mail_ids = data[0].split()[-10:]  # Для тестов
         #mail_ids = data[0].split()
 
-        print(f"📩 Найдено новых писем: {len(mail_ids)}")
+        print(f"📩 Найдено писем для теста: {len(mail_ids)}")
 
-        messages = []
+        processed_emails = []  # Список всех заявок
+
         for num in mail_ids:
             print(f"🔄 Обрабатываю письмо ID: {num}")
 
@@ -124,57 +126,18 @@ def get_latest_email():
                 print(f"🚫 Письмо проигнорировано (не заявка). Тема: {subject}")
                 continue
 
-            body = ""
-            if msg.is_multipart():
-                for part in msg.walk():
-                    if part.get_content_type() == "text/html":
-                        payload = part.get_payload(decode=True)
-                        encoding = part.get_content_charset()
+            body = get_email_body(msg)  # Получаем HTML-тело письма
 
-                        if encoding is None:
-                            detected_encoding = chardet.detect(payload)['encoding']
-                            encoding = detected_encoding if detected_encoding else "utf-8"
-
-                        body = payload.decode(encoding, errors="ignore").strip()
-                        break
-            else:
-                payload = msg.get_payload(decode=True)
-                encoding = msg.get_content_charset()
-
-                if encoding is None:
-                    detected_encoding = chardet.detect(payload)['encoding']
-                    encoding = detected_encoding if detected_encoding else "utf-8"
-
-                body = payload.decode(encoding, errors="ignore").strip()
-
-            body = get_email_body(msg)
-
-            # 🔥 Извлекаем нужные данные СРАЗУ, пока текст не обработан
+            # 🔥 Извлекаем НУЖНЫЕ ДАННЫЕ ДО обработки
             court_name, ticket_id, request_date, request_text = extract_request_data(body)
 
-            history = extract_relevant_info(body)
-
-            if history:
-                request_number = get_request_number()
-                today_date = datetime.now().strftime("%m%d")  # MMDD
-
-                ticket_id_match = re.search(r"\[(.*?)\]", subject)
-                ticket_id = ticket_id_match.group(1) if ticket_id_match else "0000"
-
-                court_info = extract_court_info(body)
-                # Удаляем строку в квадратных скобках с ~ и ticket_id
-                subject_clean = re.sub(r'\[.*?\]', '', subject).strip()
-                formatted_subject = f"{today_date}-{request_number} {subject_clean} [{ticket_id}] {court_info}"
-
-                print(f"🎯 Новая тема заявки: {formatted_subject}")
-                history = re.sub(r'<.*?>', '', history)
-                # Создаём сообщение
-                clean_message = f"{formatted_subject}\n\n{history}"
-                messages.append(clean_message)
-                print(f"✅ Письмо обработано и готово к отправке!")
+            # Проверяем, есть ли в письме полезная информация
+            if court_name != "Не найдено" and ticket_id != "Не найдено" and request_text:
+                processed_emails.append((court_name, ticket_id, request_date, request_text))
+                print(f"✅ Заявка добавлена в список!")
 
         mail.logout()
-        return messages, court_name, ticket_id, request_date, request_text
+        return processed_emails  # Возвращаем СПИСОК ВСЕХ ЗАЯВОК
 
     except Exception as e:
         print(f"❌ Ошибка в get_latest_email: {e}")
@@ -296,16 +259,19 @@ def write_to_google_sheets(court_name, ticket_id, request_date, request_text, en
 # Основной цикл
 while True:
     print("🔍 Проверяю почту...")
+    processed_emails = get_latest_email()  # Берем ВСЕ заявки
 
-    emails, court_name, ticket_id, request_date, request_text = get_latest_email()
+    if processed_emails:
+        print(f"📬 Найдено {len(processed_emails)} новых заявок, отправляю в Telegram...")
 
-    if emails:
-        print("📬 Найдены новые заявки, отправляю в Telegram...")
-        send_to_telegram(emails)
+        for court_name, ticket_id, request_date, request_text in processed_emails:
+            send_to_telegram([f"Заявка {ticket_id}:\n{request_text}"])  # Отправляем каждую заявку
 
         print("📊 Добавляю заявки в Google Sheets...")
-        write_to_google_sheets(court_name, ticket_id, request_date, request_text)
-        print("✅ Данные успешно записаны в Google Sheets!")
+        for court_name, ticket_id, request_date, request_text in processed_emails:
+            write_to_google_sheets(court_name, ticket_id, request_date, request_text)  # Запись каждой заявки
+
+        print("✅ Все данные успешно записаны в Google Sheets!")
     else:
         print("📭 Новых заявок нет.")
 
