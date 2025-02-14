@@ -74,8 +74,14 @@ def extract_relevant_info(body):
                 client.append(tag.text.strip())
                 client.append(tag.next_sibling.text.strip())
                 client.append('\n')
-                client.append(tag.find_next('font').text.strip())
-                client.append('\n')
+                next_font = tag.find_next('font')
+
+                if next_font:
+                    font_text = next_font.text.strip()
+                    # Убираем строки с цитатами (начинаются с ">")
+                    clean_lines = [line for line in font_text.splitlines() if not line.strip().startswith(">")]
+                    client.append('\n'.join(clean_lines))
+                    client.append('\n')
 
         res.append(''.join(client)) if client else None
 

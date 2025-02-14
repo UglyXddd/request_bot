@@ -18,123 +18,50 @@ CHAT_ID = "-1002284366831"
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
+# Подключение к серверу
+mail = imaplib.IMAP4_SSL(MAIL_SERVER)
+mail.login(MAIL_USER, MAIL_PASS)
+mail.select("inbox")
 
-def decode_email_header(header):
-    """Функция для декодирования темы письма"""
-    decoded_header = decode_header(header)
-    subject = ""
-    for part, encoding in decoded_header:
-        if isinstance(part, bytes):  # Если закодировано в байтах
-            encoding = encoding if encoding else "utf-8"
-            try:
-                subject += part.decode(encoding, errors="ignore")
-            except:
-                subject += part.decode("utf-8", errors="ignore")
-        else:
-            subject += part
-    return subject.strip()
+# Поиск писем с темой, начинающейся на "[~"
+status, messages = mail.search(None, 'SUBJECT "[~1358264"')
 
+# Получаем последние 10 сообщений
+message_ids = messages[0].split()[-100:]
 
-def get_latest_email():
-    try:
-        print("⏳ Подключаюсь к IMAP...")
-        mail = imaplib.IMAP4_SSL(MAIL_SERVER)
-        mail.login(MAIL_USER, MAIL_PASS)
-        print("✅ Вход в почту успешен!")
+# Обрабатываем каждое сообщение
+for num in reversed(message_ids):
+    status, msg_data = mail.fetch(num, "(RFC822)")
 
-        mail.select("inbox")
-        result, data = mail.search(None, "UNSEEN")
-        mail_ids = data[0].split()
+    for response_part in msg_data:
+        if isinstance(response_part, tuple):
+            # Разбираем email
+            msg = email.message_from_bytes(response_part[1])
 
-        print(f"📩 Найдено новых писем: {len(mail_ids)}")
+            # Декодируем тему
+            subject, encoding = decode_header(msg["Subject"])[0]
+            if isinstance(subject, bytes):
+                subject = subject.decode(encoding if encoding else "utf-8")
 
-        messages = []
-        for num in mail_ids:
-            print(f"🔄 Обрабатываю письмо ID: {num}")
+            # Декодируем отправителя
+            sender, encoding = decode_header(msg["From"])[0]
+            if isinstance(sender, bytes):
+                sender = sender.decode(encoding if encoding else "utf-8")
 
-            result, msg_data = mail.fetch(num, "(RFC822)")
-            raw_email = msg_data[0][1]
-            msg = email.message_from_bytes(raw_email)
-
-            # Декодируем тему письма
-            subject = msg["subject"] if msg["subject"] else "(Без темы)"
-            subject = decode_email_header(subject)
-
-            from_email = msg["from"]
+            # Получаем тело письма
             body = ""
-
-            # 🔍 ФИЛЬТРУЕМ ТОЛЬКО ЗАЯВКИ (если тема не начинается с "[~", письмо игнорируется)
-            if not subject.startswith("[~"):
-                print(f"🚫 Письмо проигнорировано (не заявка). Тема: {subject}")
-                continue
-
-            # Определяем кодировку и декодируем текст письма
             if msg.is_multipart():
                 for part in msg.walk():
-                    if part.get_content_type() == "text/plain":
-                        payload = part.get_payload(decode=True)
-                        encoding = part.get_content_charset()
-
-                        if encoding is None:
-                            detected_encoding = chardet.detect(payload)['encoding']
-                            encoding = detected_encoding if detected_encoding else "utf-8"
-
-                        body = payload.decode(encoding, errors="ignore").strip()
+                    content_type = part.get_content_type()
+                    content_disposition = str(part.get("Content-Disposition"))
+                    if content_type == "text/plain" and "attachment" not in content_disposition:
+                        body = part.get_payload(decode=True).decode("utf-8", errors="ignore")
                         break
             else:
-                payload = msg.get_payload(decode=True)
-                encoding = msg.get_content_charset()
+                body = msg.get_payload(decode=True).decode("utf-8", errors="ignore")
 
-                if encoding is None:
-                    detected_encoding = chardet.detect(payload)['encoding']
-                    encoding = detected_encoding if detected_encoding else "utf-8"
-
-                body = payload.decode(encoding, errors="ignore").strip()
-
-            # Выводим информацию в консоль
-            print(f"✅ Письмо обработано!")
-            print(f"📌 Тема: {subject}")
-            print(f"📄 Текст письма:\n{body[:1000]}")  # Ограничим вывод 500 символами в сосноль
-
-            # Добавляем письмо в список сообщений для отправки в Telegram
-            messages.append(f"📩 Новая заявка!\nОт: {from_email}\nТема: {subject}\n\n{body}")
-
-        mail.logout()
-        return messages
-
-    except Exception as e:
-        print(f"❌ Ошибка в get_latest_email: {e}")
-        return []
-
-
-def send_to_telegram(messages):
-    for msg in messages:
-        try:
-            print("📤 Отправляю в Telegram...")
-            clean_msg = clean_html_tags(msg)
-
-            bot.send_message(CHAT_ID, clean_msg)
-            print("✅ Отправлено!")
-        except Exception as e:
-            print(f"❌ Ошибка при отправке в Telegram: {e}")
-
-
-def clean_html_tags(text):
-    """Функция для удаления HTML-тегов"""
-    return re.sub(r"<.*?>", "", text)
-
-
-# Основной цикл с логами
-while True:
-    print("🔍 Проверяю почту...")
-    emails = get_latest_email()
-
-    if emails:
-        print("📬 Найдены новые заявки, отправляю в Telegram...")
-        send_to_telegram(emails)
-    else:
-        print("📭 Новых заявок нет.")
-
-    time.sleep(599)
-    print("😴 Поспал 10 минут...\n===================================================================")
-
+            # Выводим данные о письме
+            print(f"Отправитель: {sender}")
+            print(f"Тема: {subject}")
+            print(f"Сообщение: {body[:10000]}")  # Ограничиваем вывод первых 500 символов
+            print("=" * 100)
